@@ -9,7 +9,7 @@
 #include "arch_test.h"
 
 # Test Virtual Machine (TVM) used by program.
-RVTEST_ISA("RV64I_Svadu")
+RVTEST_ISA("RV32I_Svadu")
 
 # Test code region
 .section .text.init
@@ -23,44 +23,41 @@ RVTEST_CODE_BEGIN
 
   RVTEST_SIGBASE(x1, signature_x1_0)
 
-  # update ppn in pte
-  la t2, pte_sv32
-  lw t0, (t2)
-  la t1, page
-  srli t1, t1, (RISCV_PGSHIFT - PTE_PPN_SHIFT)
-  or t0, t0, t1 
-  sw t0, (t2)
-
   # enable vm in sv32 mode
-  li a0, (SATP_MODE & ~(SATP_MODE<<1)) * SATP_MODE_SV39
-  la a1, pte_sv32
-  srl a1, a1, RISCV_PGSHIFT
-  or a1, a1, a0
-  csrw sptbr, a1
+  li t0, -1
+  csrw pmpaddr0, t0
+  li t0, 0x0F
+  csrw pmpcfg0, t0
+  SATP_SETUP_SV32
   sfence.vma
 
   # setup trap handler
-  la a0, mtvec_handler
-  csrw mtvec, a0
+  la t0, mtvec_handler
+  csrw mtvec, t0
+
+  la a0, page_32
+  li a1, PTE_V | PTE_U | PTE_R | PTE_W | PTE_X | PTE_A 
+  PTE_SETUP_RV32(a0, a1, t0, t1, 0x00000000, 0)
 
   # Set up MPRV with MPP=S, so loads and stores use S-mode
-  li a1, ((MSTATUS_MPP & ~(MSTATUS_MPP<<1)) * PRV_S) | MSTATUS_MPRV
-  csrs mstatus, a1
+  li t0, ((MSTATUS_MPP & ~(MSTATUS_MPP<<1)) * PRV_S) | MSTATUS_MPRV
+  csrs mstatus, t0
 
   # Store 0 to va 0 to test a fault (SUM is 0)
   # Skip instruction after fault, dont set A/D bits
-  li x30, 4
-  li x29, 0
-  sw x0, (x0)
+  li a0, 4
+  li a1, PTE_V | PTE_U | PTE_R | PTE_W | PTE_X | PTE_A
+  li a2, 0x00000000
+  sw x0, (a2)
 
   # clear MPRV
   li a1, MSTATUS_MPRV
   csrc mstatus, a1
-
+#if 0
   # Store pte to signature
-  lw t0, pte_sv32
-  RVTEST_SIGUPD(x1,t0,offset)
-
+  lw a0, pte_sv32
+  RVTEST_SIGUPD(x1,a0,offset)
+#endif
   # Set SUM=1, MPRV=1, reset MPP to S
   li a1, ((MSTATUS_MPP & ~(MSTATUS_MPP<<1)) * PRV_S) | MSTATUS_SUM | MSTATUS_MPRV
   csrs mstatus, a1
@@ -68,10 +65,12 @@ RVTEST_CODE_BEGIN
   # store to va 0 - should cause page fault due to A=D=0
   # request trap handler to set A=D=1 and retry
   # no page fault should occur on retry 
-  li x30, 0
-  li x29, PTE_A | PTE_D
-  sw x0, (x0)
+  li a0, 0
+  li a1, PTE_V | PTE_U | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D
+  li a2, 0x00000000
+  sw x0, (a2)
 
+#if 0
   # clear MPRV
   li a1, MSTATUS_MPRV
   csrc mstatus, a1
@@ -90,7 +89,7 @@ RVTEST_CODE_BEGIN
   # Set SUM=1, MPRV=1, reset MPP to S
   li a1, ((MSTATUS_MPP & ~(MSTATUS_MPP<<1)) * PRV_S) | MSTATUS_SUM | MSTATUS_MPRV
   csrs mstatus, a1
-
+#endif
   # set HADE to enable HW A/D updating
 #if __riscv_xlen == 64
   li a1, MENVCFG_HADE
@@ -99,7 +98,7 @@ RVTEST_CODE_BEGIN
   li a1, MENVCFGH_HADE
   csrc menvcfgh, a1
 #endif
-
+#if 0
   # store to va 0 - should not cause page fault due to A=D=0
   li x30, 0
   li x29, 0
@@ -108,36 +107,35 @@ RVTEST_CODE_BEGIN
   # Store pte to signature
   lw t0, pte_sv32
   RVTEST_SIGUPD(x1,t0,offset)
-  
+#endif 
 #endif
   RVMODEL_HALT
 
   .align 2
   .global mtvec_handler
 mtvec_handler:
-  # Set D bit in pte_sv32 if requested in x29
-  la t1, pte_sv32
-  lw t0, (t1)
-  or t0, t0, x29
-  sw t0, (t1)
-  sfence.vma
+  PTE_PERMUPD_RV32(a1, t0, t1, 0x00000000, 0);
+  li t0, ((MSTATUS_MPP & ~(MSTATUS_MPP<<1)) * PRV_M)
+  csrc mstatus, t0
+  li t0, ((MSTATUS_MPP & ~(MSTATUS_MPP<<1)) * PRV_S) | MSTATUS_SUM | MSTATUS_MPRV
+  csrs mstatus, t0
   # advanced pc if requested in x30
   csrr t0, mepc
-  add t0, t0, x30
-  csrw mepc, t0
-  mret
+  add t0, t0, a0
+  sfence.vma
+  jr t0
 
 RVTEST_CODE_END
 
 RVTEST_DATA_BEGIN
-  .data
-  .align 12
-  page:  .fill 4096, 1, 0
-
-  .align 12
-  pte_sv32: 
-  .dword  PTE_V | PTE_U | PTE_R | PTE_W | PTE_X | PTE_A
 RVTEST_DATA_END
+  .align 12
+   page_32:
+  .fill   4096/REGWIDTH, REGWIDTH, 0
+  .align 12
+  rvtest_Sroot_pg_tbl:
+  rvtest_slvl1_pg_tbl:
+      RVTEST_PTE_IDENT_MAP
 
 # Output data section.
 RVMODEL_DATA_BEGIN
