@@ -9,7 +9,7 @@
 #include "arch_test.h"
 
 # Test Virtual Machine (TVM) used by program.
-RVTEST_ISA("RV32I_Svadu")
+RVTEST_ISA("RV64I_Zicsr")
 
 # Test code region
 .section .text.init
@@ -19,7 +19,7 @@ RVMODEL_BOOT
 RVTEST_CODE_BEGIN
 
 #ifdef TEST_CASE_1
-  RVTEST_CASE(1,"//check ISA:=regex(.*64.*); check ISA:=regex(.*I.*); check ISA:=regex(.*Svadu.*); def TEST_CASE_1=True", svadu)
+  RVTEST_CASE(0,"//check ISA:=regex(.*64.*);check ISA:=regex(.*I.*);def TEST_CASE_1=True;",svadu_sv57)
 
   RVTEST_SIGBASE(x1, signature_x1_0)
 
@@ -119,7 +119,7 @@ RVTEST_CODE_BEGIN
 
   # Clear A/D bits from PTE
   la t0, sv57_level_0
-  ld t0, (t0)
+  ld t2, (t0)
   li t1, PTE_A | PTE_D
   not t1, t1
   and t1, t2, t1
