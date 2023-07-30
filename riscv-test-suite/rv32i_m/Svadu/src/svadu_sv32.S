@@ -9,7 +9,7 @@
 #include "arch_test.h"
 
 # Test Virtual Machine (TVM) used by program.
-RVTEST_ISA("RV32I_Svadu")
+RVTEST_ISA("RV32I_Zicsr")
 
 # Test code region
 .section .text.init
