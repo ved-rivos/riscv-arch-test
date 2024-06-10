@@ -1093,10 +1093,29 @@ ADDI(swreg, swreg, RVMODEL_CBZ_BLOCKSIZE)
    value in the signature referenced by SIG using the
    help of the temporary register TMP.
  */
-#define RVTEST_SIGUPD_CSR(_SIG, _TMP, _CSR) ;\
+#define RVTEST_SIGUPD_CSR(_SIG, _TMP, _CSR)  \
   csrr _TMP, _CSR                           ;\
   RVTEST_SIGUPD(_SIG, _TMP)
 
+/* RVTEST_SIGUPD_CTR(SIG, TMP, CSR)
+   This macro reads the logical CTR entry0, mctrctl,
+   and sctrstatus CSRs and stores the value in the
+   signature referenced by SIG using the help of the
+   temporary register TMP.
+ */
+#define RVTEST_SIGUPD_ALL_CTR(_SIG, _TMP)        \
+  RVTEST_SIGUPD_CSR(_SIG, _TMP, CSR_SCTRSTATUS) ;\
+  li _TMP, 0x0                                  ;\
+1:                                              ;\
+  ori _TMP, _TMP, 0x200                         ;\
+  csrw CSR_SISELECT, _TMP                       ;\
+  RVTEST_SIGUPD_CSR(_SIG, _TMP, CSR_SIREG)      ;\
+  RVTEST_SIGUPD_CSR(_SIG, _TMP, CSR_SIREG2)     ;\
+  RVTEST_SIGUPD_CSR(_SIG, _TMP, CSR_SIREG3)     ;\
+  csrr _TMP, CSR_SISELECT                       ;\
+  addi _TMP, _TMP, 1                            ;\
+  andi _TMP, _TMP, 0xFF                         ;\
+  bne  _TMP, x0, 1b
 
 //--------------------------------- Migration aliases ------------------------------------------
 #ifdef RV_COMPLIANCE_RV32M
