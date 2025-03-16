@@ -202,6 +202,9 @@
 #define PTE_D     0x080 // Dirty
 #define PTE_SOFT  0x300 // Reserved for Software
 
+#define PTE_RSW   0x1800000000000000 /* Svrsw60t59b: Reserved for software use */
+#define PTE_RSVD  0x07C0000000000000 /* Reserved for future standard use */
+
 #define PTE_PPN_SHIFT 10
 
 #define PTE_TABLE(PTE) (((PTE) & (PTE_V | PTE_R | PTE_W | PTE_X)) == PTE_V)
