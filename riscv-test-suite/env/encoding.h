@@ -305,6 +305,16 @@
 #define PMP_NAPOT 0x18
 
 #define IRQ_U_SOFT   0
+/* Define PMP Configuration Fields */
+#define PMP0_CFG_SHIFT  0
+#define PMP1_CFG_SHIFT  8
+#define PMP2_CFG_SHIFT  16
+#define PMP3_CFG_SHIFT  24
+#define PMP4_CFG_SHIFT  32
+#define PMP5_CFG_SHIFT  40
+#define PMP6_CFG_SHIFT  48
+#define PMP7_CFG_SHIFT  56
+
 #define IRQ_S_SOFT   1
 #define IRQ_VS_SOFT  2
 #define IRQ_M_SOFT   3
